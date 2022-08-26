@@ -20,6 +20,8 @@ def print_vcf_header():
     header += '##INFO=<ID=TARGET,Number=A,Type=String,Description='
     header += '"Name of the sequencing that contains the mutation.">\n'
     header += '##INFO=<ID=RATIO,Number=A,Type=String,Description="Ratio of mutation to reference.">\n'
+    header += '##INFO=<ID=M,Number=A,Type=String,Description="Expression of mutated.">\n'
+    header += '##INFO=<ID=WT,Number=A,Type=String,Description="Expression of WT.">\n'
     header += '##INFO=<ID=MINCOV,Number=A,Type=String,Description='
     header += '"Minimum k-mer coverage of alternative allele.">\n'
     header += '##INFO=<ID=REMOVED,Number=A,Type=String,Description="Number of removed bases.">\n'
@@ -28,9 +30,9 @@ def print_vcf_header():
     sys.stdout.write(header)
 
 
-def print_vcf_line(chro, loc, ref_var, alt_var, type_var, target, ratio, min_cov, rem, ad):
+def print_vcf_line(chro, loc, ref_var, alt_var, type_var, target, ratio, alt_exp, ref_exp, min_cov, rem, ad):
     line = "\t".join([chro, str(loc), ".", ref_var, alt_var, ".", ".",
-                      "TYPE="+type_var+";TARGET="+target+";RATIO="+ratio+";MINCOV="+min_cov +
+                      "TYPE="+type_var+";TARGET="+target+";RATIO="+ratio+";M="+alt_exp+";WT="+ref_exp+";MINCOV="+min_cov +
                       ";REMOVED="+str(rem)+";ADDED="+str(ad)])
     sys.stdout.write(line + "\n")
 
@@ -285,7 +287,7 @@ def create_report(args):
             ref_var = ref_var.translate(complement)[::-1] if strand == '-' else ref_var
             alt_var = alt_var.translate(complement)[::-1] if strand == '-' else alt_var
             print_vcf_line(chro, loc_var, ref_var, alt_var, insert_type,
-                           query, ratio, min_cov, removed, added.replace(" ", ""))
+                           query, ratio, alt_exp, ref_exp, min_cov, removed, added.replace(" ", ""))
 
         elif table:
             var_name = variant[0] + "/" + query if "/" not in variant[0] else variant[0]
