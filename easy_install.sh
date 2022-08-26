@@ -38,6 +38,7 @@ cd $INSTALL_DIR/software
 echo "### Install km ... ###"
 git clone https://github.com/BoudSTER/km.git
 cd km
+pwd
 sed -i 's/query, ratio, min_cov, removed, added.replace(" ", ""))/query, ratio, alt_exp, ref_exp, min_cov, removed, added.replace(" ", ""))/g' $(find . -iname "find_report.py")
 sed -i 's/def print_vcf_line(chro, loc, ref_var, alt_var, type_var, target, ratio, min_cov, rem, ad):/def print_vcf_line(chro, loc, ref_var, alt_var, type_var, target, ratio, alt_exp, ref_exp, min_cov, rem, ad):/g' $(find . -iname "find_report.py")
 sed -i 's/"TYPE="+type_var+";TARGET="+target+";RATIO="+ratio+";MINCOV="+min_cov +/"TYPE="+type_var+";TARGET="+target+";RATIO="+ratio+";M="+alt_exp+";WT="+ref_exp+";MINCOV="+min_cov +/g' $(find . -iname "find_report.py")
