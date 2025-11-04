@@ -1,0 +1,38 @@
+---
+title: 'MAIN MAGNET_AML'
+author: 'Augustin'
+date: 'created : 2025-11-04 — compiled : `r format(Sys.time(), "%Y-%m-%d %H:%M")`'
+output:
+  html_document:
+    toc: true # Table des matières
+    # toc_float: 
+      # collapsed: false # Commencer avec le TOC déplié
+      # smooth_scroll: true # Permet un défilement fluide jusqu'à la section sélectionnée
+    # toc_depth: 3 # Profondeur du TOC (niveaux de titres inclus)
+    number_sections: true # Numérotation des sections
+    css: style.css # Fichier CSS personnalisé
+    # df_print: paged # Mode d'affichage des data frames (options : default, paged, kable, tibble, none)
+  pdf_document:
+    toc: true # Table des matières
+    toc_depth: 3 # Profondeur du TOC
+    # number_sections: true # Numérotation des sections
+    # latex_engine: xelatex # Moteur LaTeX (pdflatex, xelatex, lualatex)
+    citation_package: natbib # Système de gestion des citations (natbib, biblatex)
+header-includes:
+  # - \usepackage{lipsum} # Inclure des packages LaTeX supplémentaires ici
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# CORE
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(lubridate)
+# FOR REPORT
+library(broom)
+library(plotly)
+library(patchwork)
+library(kableExtra)
+library(randomcoloR)
+```

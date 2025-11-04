@@ -1,0 +1,14 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+./input
+./output
+*.html
+./input/*
+./output/*
+input
+output
+*.zip
+*.css
+*.png

@@ -1,0 +1,235 @@
+---
+title: 'FC'
+author: 'ABO'
+date: 'created : 2025-11-04 — compiled : `r format(Sys.time(), "%Y-%m-%d %H:%M")`'
+output:
+  html_document:
+    code_folding: hide
+    toc: true # Table des matières
+    # toc_float: 
+      # collapsed: false # Commencer avec le TOC déplié
+      # smooth_scroll: true # Permet un défilement fluide jusqu'à la section sélectionnée
+    # toc_depth: 3 # Profondeur du TOC (niveaux de titres inclus)
+    number_sections: true # Numérotation des sections
+    css: style.css # Fichier CSS personnalisé
+    # df_print: paged # Mode d'affichage des data frames (options : default, paged, kable, tibble, none)
+  pdf_document:
+    toc: true # Table des matières
+    toc_depth: 3 # Profondeur du TOC
+    # number_sections: true # Numérotation des sections
+    # latex_engine: xelatex # Moteur LaTeX (pdflatex, xelatex, lualatex)
+    citation_package: natbib # Système de gestion des citations (natbib, biblatex)
+header-includes:
+  # - \usepackage{lipsum} # Inclure des packages LaTeX supplémentaires ici
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# CORE
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(lubridate)
+# FOR REPORT
+library(broom)
+library(plotly)
+library(patchwork)
+library(kableExtra)
+library(randomcoloR)
+library(xml2)
+```
+
+```{r FUNCTIONS}
+extract_variant_info <- function(xml_file_path) {
+  cat(xml_file_path, file=stderr())
+  
+  # Charger le fichier XML
+  xml_file <- read_xml(xml_file_path)
+  
+  # Obtenir le noeud racine
+  root_node <- xml_root(xml_file)
+  
+  # Trouver tous les noeuds 'variant'
+  variant_nodes <- xml_find_all(root_node, ".//variant")
+  
+  # Extraire le nom du fichier XML sans son chemin complet
+  xml_file_name <- basename(xml_file_path)
+  
+  # Mapper sur chaque 'variant' pour extraire les informations
+  variants_data <- map_df(variant_nodes, function(variant) {
+    
+    # Extraire les noeuds 'refseq'
+    refseq_nodes <- xml_find_all(variant, ".//refseq")
+    
+    # Mapper sur chaque 'refseq' pour obtenir les détails
+    map_df(refseq_nodes, function(refseq) {
+      tibble(
+        chromosome = xml_text(xml_find_first(variant, ".//chromosome")),
+        position = xml_text(xml_find_first(variant, ".//position")),
+        reference = xml_text(xml_find_first(variant, ".//reference")),
+        alternative = xml_text(xml_find_first(variant, ".//alternative")),
+        gene = xml_text(xml_find_first(refseq, ".//gene")),
+        exon = xml_text(xml_find_first(refseq, ".//exon")),
+        function_type = xml_text(xml_find_first(refseq, ".//function")),
+        transcript = xml_text(xml_find_first(refseq, ".//transcript")),
+        nucleotidic_position = xml_text(xml_find_first(refseq, ".//nucleotidic_position")),
+        proteinic_position = xml_text(xml_find_first(refseq, ".//proteinic_position")),
+        prefered_transcript = xml_text(xml_find_first(refseq, ".//prefered_transcript")),
+        xml_file_name = xml_file_name  # Ajouter le nom du fichier XML
+      )
+    })
+  })
+
+
+  variants_data <- variants_data %>% filter(prefered_transcript == "YES")
+  
+  return(variants_data)
+}
+
+# Fonction pour obtenir la liste des fichiers XML dans un dossier
+get_xml_files <- function(folder_path) {
+  list.files(path = folder_path, pattern = "\\.xml$", full.names = TRUE)
+}
+
+# Appliquer la fonction extract_variant_info à tous les fichiers XML dans le dossier
+process_xml_folder <- function(folder_path) {
+  xml_files <- get_xml_files(folder_path)
+  
+  # Utiliser map_df pour appliquer la fonction à chaque fichier et combiner les résultats en un seul DataFrame
+  all_variants_data <- map_df(xml_files, extract_variant_info)
+  
+  return(all_variants_data)
+}
+
+```
+
+# 101125
+```{r 101125}
+################################################################################
+# BIG DATA 
+################################################################################
+
+(
+  read_xlsx("./input/bm/thèque Big1.xlsx")
+  %>% clean_names()
+) -> raw_bm_BIG
+
+(
+  raw_bm_BIG
+  %>% group_by(n_inclusion)
+  %>% fill(initiale_nom:stade, .direction = "down")
+  %>% mutate(n_bm = ifelse(n_inclusion == "12A-010" & stade == "J60 post allo",
+  "L1710153", n_bm))
+  %>% mutate(n_bm = ifelse(n_bm == "L1714848", "L1714853", n_bm))
+  %>% ungroup()
+  %>% add_row(n_inclusion = "12A-020", n_bm = "L1816858")
+) -> bm_BIG
+
+################################################################################
+# SGE FILE 101125
+################################################################################
+
+(
+  read_xls("./input/bm/TW-MRD-101125-DRAGEN.xls")
+  %>% clean_names()
+  %>% filter(projet == "MAGNET_AML")
+  %>% select(prelevement)
+  %>% mutate(to_keep = TRUE)
+  %>% mutate(n_bm = str_remove(prelevement, "D[0-9]{2}"))
+) -> ndosbm_run
+
+(
+  bm_BIG
+  %>% left_join(ndosbm_run)
+  %>% group_by(n_inclusion)
+  %>% filter(any(to_keep == TRUE))
+  %>% filter(to_keep == TRUE | stade == "diag")
+  %>% arrange(n_inclusion, desc(stade), desc(ngs))
+  %>% group_by(n_inclusion, stade)
+  %>% slice(1)
+  %>% arrange(n_inclusion, desc(stade), desc(ngs))
+  %>% group_by(n_inclusion)
+  %>% mutate(n = n())
+) -> joined
+
+# (
+#   joined
+#   # %>% filter(stade == "diag")
+# ) -> diag
+
+# (
+#   joined
+#   %>% mutate(to_keep = ifelse(!is.na(ngs), TRUE, to_keep))
+# ) -> perfect_patient
+
+
+################################################################################
+# POSMYE
+################################################################################
+
+(
+  read_xlsx("./input/bm/BASE BIG1 FINALE 2023 patients 22_07_2024_IDENTITES_POSMYE.xlsx", sheet = 2)
+  %>% clean_names()
+) -> raw_POSMYE
+
+(
+  bm_BIG
+  %>% left_join(ndosbm_run)
+  %>% filter(to_keep == TRUE)
+) -> tmp
+
+(
+  raw_POSMYE
+  %>% filter(id %in% tmp$n_inclusion)
+) -> POSMYE_101125
+
+(
+  POSMYE_101125
+  %>% filter(!is.na(x7))
+  %>% mutate(x6 = str_extract(x6, "L.*"))
+  # %>% select(x6)
+) -> SQXT_ndosbm
+
+# write_tsv(SQXT_ndosbm, "./input/bm/XML/SSQXT_101125.tsv")
+
+################################################################################
+# OPEN XML
+################################################################################
+
+all_variants_data <- process_xml_folder("./input/bm/XML/selected_101125/")
+
+(
+  all_variants_data
+  %>% mutate(ndosbm = str_remove(xml_file_name, "D[0-9]{2}.xml"))
+  %>% select(ndosbm, nucleotidic_position, chromosome, position, reference, alternative)
+) -> variant_data
+
+list_gene_LOVER_2023 <- "ABCB11|ABL1|ABO|ANKRD26|ARID1A|ASXL1|ASXL2|ATG2B|ATM|ATRX|B2M|BAX|BCL2|BCOR|BCORL1|BIRC3|BRAF|BTG1|BTK|CALR|CARD11|CBL|CCL22|CCND1|CCND3|CCR4|CD274|CD28|CD58|CD79A|CD79B|CDKN2A|CDKN2B|CEBPA|CHEK2|CIITA|COG1|CREBBP|CRLF2|CSF2RA|CSF2RB|CSF3R|CTCF|CUX1|CXCR4|DDX3X|DDX41|DHX15|DHX34|DNMT3A|EBF1|EGLN1|EGR2|EP300|EPAS1|EPO|EPOR|ERG|ETNK1|ETV6|EVC|EZH2|F8|F9|F9|FBXW7|FERMT1|FGFR1|FIP1L1|FLT3|FOXO1|GATA1|GATA2|GNA13|GNAS|GNB1|GRM1|GSKIP|HRAS|ID3|IDH1|IDH2|IKZF1|IKZF3|IL2RG|IL3RA|IL5RA|IL7R|IRF4|ITPKB|JAK1|JAK2|JAK3|JUNB|KDM6A|KIT|KLF2|KMT2A|KMT2D|KRAS|L2HGDH|LAMA3|LUC7L2|MAP2K1|MAP3K14|MBD4|MEF2B|MPL|MSC|MYC|MYD88|NDUFV3|NF1|NFE2|NIPBL|NOTCH1|NOTCH2|NPHS2|NPM1|NRAS|NSD2|WHSC1|P2RY8|PAX5|PDGFRA|PDGFRB|PHF6|PIGA|PIM1|PLCG1|PLCG2|POT1|PPM1D|PRDM1|PROC|PROS1|PRPF8|PTEN|PTPN11|PTPRD|RAD21|RB1|RHOA|RIT1|RPS15|RUNX1|SAMD9|SAMD9L|SBDS|SERPINC1|SETBP1|SETD2|SF3B1|SH2B3|SLC12A6|SMC1A|SMC3|SOCS1|SOX6|SPI1|SRP72|SRSF2|SRY|STAG2|STAT1|STAT3|STAT5A|STAT5B|STAT6|TBL1XR1|TCF3|TCL1A|TDRD7|TERC|TERT|TET2|TNFAIP3|TNFRSF14|TP53|TYK2|U2AF1|UBA1|UBTF|VAV1|VCAN|VHL|VWF|WNK1|WT1|XPO1|ZBTB7A|ZRSR2"
+
+(
+  SQXT_ndosbm
+  %>% separate_rows(posmye, sep = "\r\n")
+  %>% mutate(gene = str_extract(posmye, list_gene_LOVER_2023))
+  %>% mutate(vaf = str_extract(posmye, "\\d+(\\.\\d+)?%")) 
+  %>% mutate(vaf = as.numeric(str_remove(vaf, "%")))
+  %>% mutate(c. = str_extract(posmye, "c.* :"))
+  %>% mutate(c. = ifelse(is.na(c.), str_extract(posmye, "c.* \\("),c.))
+  %>% mutate(c. = str_remove(c., "( :)| \\("))
+  %>% mutate(p. = str_extract(posmye, "p\\..*\\("))
+  %>% mutate(p. = str_remove(p., "\\("))
+  %>% mutate(p. = ifelse(is.na(p.), "p.intron", p.))
+  %>% mutate(mutation = paste0(gene, "_", p.))
+  %>% mutate(gene = case_when(
+    gene == "FLT3" & str_detect(c., "dup|in") ~ "FLT3-ITD",
+    gene == "FLT3" & str_detect(c., ">") ~ "FLT3-TKD",
+    TRUE ~ gene
+  ))
+  %>% select(-p.)
+  %>% left_join(variant_data, by=c("ndosbm", "c." = "nucleotidic_position"))
+) -> SQXT_ndosbm_row
+
+```
+* DECOURCELLE erreur meme L1706711 pour pré-greffe et J60 post allo
+  * Modif 12A-010 J60 post allo L1710153
+* MISSING : "L1714853" "L1816858"
+* Modification DUPIN L1714848 to L1714853
