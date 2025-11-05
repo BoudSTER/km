@@ -81,7 +81,7 @@ extract_variant_info <- function(xml_file_path) {
   })
 
 
-  variants_data <- variants_data %>% filter(prefered_transcript == "YES")
+  variants_data <- variants_data # %>% filter(prefered_transcript == "YES")
   
   return(variants_data)
 }
@@ -133,6 +133,13 @@ process_xml_folder <- function(folder_path) {
   read_xls("./input/bm/TW-MRD-101125-DRAGEN.xls")
   %>% clean_names()
   %>% filter(projet == "MAGNET_AML")
+  %>% count(patient)
+) -> nom_run
+
+(
+  read_xls("./input/bm/TW-MRD-101125-DRAGEN.xls")
+  %>% clean_names()
+  %>% filter(projet == "MAGNET_AML")
   %>% select(prelevement)
   %>% mutate(to_keep = TRUE)
   %>% mutate(n_bm = str_remove(prelevement, "D[0-9]{2}"))
@@ -176,11 +183,11 @@ process_xml_folder <- function(folder_path) {
   bm_BIG
   %>% left_join(ndosbm_run)
   %>% filter(to_keep == TRUE)
-) -> tmp
+) -> n_incl_SGE
 
 (
   raw_POSMYE
-  %>% filter(id %in% tmp$n_inclusion)
+  %>% filter(id %in% n_incl_SGE$n_inclusion)
 ) -> POSMYE_101125
 
 (
@@ -202,9 +209,15 @@ all_variants_data <- process_xml_folder("./input/bm/XML/selected_101125/")
   all_variants_data
   %>% mutate(ndosbm = str_remove(xml_file_name, "D[0-9]{2}.xml"))
   %>% select(ndosbm, nucleotidic_position, chromosome, position, reference, alternative)
+  %>% distinct()
+  %>% ungroup()
 ) -> variant_data
 
 list_gene_LOVER_2023 <- "ABCB11|ABL1|ABO|ANKRD26|ARID1A|ASXL1|ASXL2|ATG2B|ATM|ATRX|B2M|BAX|BCL2|BCOR|BCORL1|BIRC3|BRAF|BTG1|BTK|CALR|CARD11|CBL|CCL22|CCND1|CCND3|CCR4|CD274|CD28|CD58|CD79A|CD79B|CDKN2A|CDKN2B|CEBPA|CHEK2|CIITA|COG1|CREBBP|CRLF2|CSF2RA|CSF2RB|CSF3R|CTCF|CUX1|CXCR4|DDX3X|DDX41|DHX15|DHX34|DNMT3A|EBF1|EGLN1|EGR2|EP300|EPAS1|EPO|EPOR|ERG|ETNK1|ETV6|EVC|EZH2|F8|F9|F9|FBXW7|FERMT1|FGFR1|FIP1L1|FLT3|FOXO1|GATA1|GATA2|GNA13|GNAS|GNB1|GRM1|GSKIP|HRAS|ID3|IDH1|IDH2|IKZF1|IKZF3|IL2RG|IL3RA|IL5RA|IL7R|IRF4|ITPKB|JAK1|JAK2|JAK3|JUNB|KDM6A|KIT|KLF2|KMT2A|KMT2D|KRAS|L2HGDH|LAMA3|LUC7L2|MAP2K1|MAP3K14|MBD4|MEF2B|MPL|MSC|MYC|MYD88|NDUFV3|NF1|NFE2|NIPBL|NOTCH1|NOTCH2|NPHS2|NPM1|NRAS|NSD2|WHSC1|P2RY8|PAX5|PDGFRA|PDGFRB|PHF6|PIGA|PIM1|PLCG1|PLCG2|POT1|PPM1D|PRDM1|PROC|PROS1|PRPF8|PTEN|PTPN11|PTPRD|RAD21|RB1|RHOA|RIT1|RPS15|RUNX1|SAMD9|SAMD9L|SBDS|SERPINC1|SETBP1|SETD2|SF3B1|SH2B3|SLC12A6|SMC1A|SMC3|SOCS1|SOX6|SPI1|SRP72|SRSF2|SRY|STAG2|STAT1|STAT3|STAT5A|STAT5B|STAT6|TBL1XR1|TCF3|TCL1A|TDRD7|TERC|TERT|TET2|TNFAIP3|TNFRSF14|TP53|TYK2|U2AF1|UBA1|UBTF|VAV1|VCAN|VHL|VWF|WNK1|WT1|XPO1|ZBTB7A|ZRSR2"
+
+################################################################################
+# 54 p avec run SSQXT (2 NEG)
+################################################################################
 
 (
   SQXT_ndosbm
@@ -226,10 +239,170 @@ list_gene_LOVER_2023 <- "ABCB11|ABL1|ABO|ANKRD26|ARID1A|ASXL1|ASXL2|ATG2B|ATM|AT
   ))
   %>% select(-p.)
   %>% left_join(variant_data, by=c("ndosbm", "c." = "nucleotidic_position"))
+  %>% group_by(gene, `c.`)
+  %>% fill(chromosome, position, reference, alternative,
+       .direction = "downup")
+  %>% ungroup()
+  %>% filter(posmye != "Analyse négative")
 ) -> SQXT_ndosbm_row
 
+length(unique(SQXT_ndosbm_row$ndosbm))
+
+(
+  POSMYE_101125
+  %>% filter(is.na(x7))
+  %>% mutate(x6 = str_extract(x6, "L.*"))
+  # %>% select(ndosbm)
+  # %>% write_tsv(., pipe("pbcopy"))
+  %>% filter(posmye != "Analyse négative.")
+  %>% filter(posmye != ".")
+) -> ndosbm_missing
+
+(
+  read_tsv("./input/bm/XML/selected_missing_101125/missing_ndosbm_101125.tsv",
+  col_names = c("name", "path", "date"))
+  %>% filter(!str_detect(path, "TW-MRD|BIOCOMPUTING|GROUP"))
+  %>% arrange(name, desc(date))
+  %>% group_by(name)
+  %>% slice(1)
+  %>% ungroup()
+) -> path_ndosbm_missing
+
+all_variants_data <- process_xml_folder("./input/bm/XML/selected_missing_101125/")
+
+(
+  all_variants_data
+  %>% mutate(ndosbm = str_remove(xml_file_name, "D[0-9]{2}.xml"))
+  %>% select(ndosbm, nucleotidic_position, chromosome, position, reference, alternative)
+  %>% distinct()
+  %>% ungroup()
+) -> variant_data
+
+
+(
+  ndosbm_missing
+  %>% separate_rows(posmye, sep = "\r\n")
+  %>% mutate(gene = str_extract(posmye, list_gene_LOVER_2023))
+  %>% mutate(vaf = str_extract(posmye, "\\d+(\\.\\d+)?%")) 
+  %>% mutate(vaf = as.numeric(str_remove(vaf, "%")))
+  %>% mutate(c. = str_extract(posmye, "c.* :"))
+  %>% mutate(c. = ifelse(is.na(c.), str_extract(posmye, "c.* \\("),c.))
+  %>% mutate(c. = str_remove(c., "( :)| \\("))
+  %>% mutate(p. = str_extract(posmye, "p\\..*\\("))
+  %>% mutate(p. = str_remove(p., "\\("))
+  %>% mutate(p. = ifelse(is.na(p.), "p.intron", p.))
+  %>% mutate(mutation = paste0(gene, "_", p.))
+  %>% mutate(gene = case_when(
+    gene == "FLT3" & str_detect(c., "dup|in") ~ "FLT3-ITD",
+    gene == "FLT3" & str_detect(c., ">") ~ "FLT3-TKD",
+    TRUE ~ gene
+  ))
+  %>% select(-p.)
+  %>% left_join(variant_data, by=c("ndosbm", "c." = "nucleotidic_position"))
+  %>% group_by(gene, `c.`)
+  %>% fill(chromosome, position, reference, alternative,
+       .direction = "downup")
+  %>% ungroup()
+  %>% filter(posmye != "Analyse négative")
+) -> ndosbm_missing_row
+
+(
+  SQXT_ndosbm_row
+  %>% bind_rows(ndosbm_missing_row)
+  %>% left_join(bm_BIG %>% select(ndosbm = n_bm, ddp))
+  %>% filter(!str_detect(nom, "PLAINE"))
+  %>% rename(ndosbm_diag = ndosbm)
+) -> all_by_row
+
+missing_incl <- setdiff(n_incl_SGE$n_inclusion, unique(all_by_row$id))
+
+(
+  bm_BIG
+  %>% filter(n_inclusion %in% missing_incl)
+  %>% filter(stade == "diag")
+  %>% filter(type == "MO" | type == "mO")
+) -> missing_incl_diag
+
+# path_ndosbm_missing %>% select(path) %>% write_tsv("./output/bm/path_ndosbm_missing.tsv")
+
+(
+  read_tsv("./input/bm/XML/selected_nincl_101125/missing_incl_diag.tsv")
+  %>% filter(str_detect(PATH, "xml"))
+) -> n_incl_path
+
+all_variants_data <- process_xml_folder("./input/bm/XML/selected_nincl_101125/")
+
+(
+  all_variants_data
+  %>% mutate(ndosbm = str_remove(xml_file_name, "D[0-9]{2}.xml"))
+  %>% select(ndosbm, nucleotidic_position, chromosome, position, reference, alternative)
+  %>% distinct()
+  %>% ungroup()
+) -> variant_data
+
+(
+  n_incl_SGE
+  %>% select(n_inclusion, ndosbm_suivi = n_bm)
+  %>% left_join(POSMYE_101125 %>% select(n_inclusion = id, ndosbm_diag = ndosbm))
+  %>% mutate(to_drop = FALSE, .before = "n_inclusion")
+  %>% mutate(to_drop = ifelse(!str_detect(ndosbm_diag, "L"), TRUE, to_drop))
+  %>% mutate(to_drop = ifelse(n_inclusion %in% c("19A-004", "22A-048", "14A-003", "01A-029"), TRUE, to_drop))
+) -> correspondance_diag_suivi
+
+(
+  correspondance_diag_suivi
+  %>% group_by(n_inclusion)
+  %>% mutate(n = n())
+  %>% ungroup()
+  %>% filter(to_drop == FALSE)
+  %>% left_join(all_by_row)
+  %>% mutate(transcript = "")
+  %>% mutate(exon = "")
+  %>% left_join(bm_BIG %>% select(ndosbm_suivi = n_bm, date_suivi = ddp))
+  %>% select(ndosbm_diag, lib=x7,	gene, chromosome, position, reference, 
+  alternative, transcript, exon, nucleotidic_position = `c.`,	
+  proteinic_position = mutation, vaf_percent = vaf, ndosbm_suivi, date_suivi,
+   nom_patient = nom, DDG = ddp)
+   %>% arrange(nom_patient, ndosbm_suivi)
+   %>% mutate(proteinic_position = str_extract(proteinic_position, "p.*"))
+) -> FC_101125
+
+# length(unique(FC_101125$ndosbm_suivi))
+
+writexl::write_xlsx(FC_101125, "./output/bm/FC_MAGNET_AML_101125.xlsx")
+
 ```
-* DECOURCELLE erreur meme L1706711 pour pré-greffe et J60 post allo
-  * Modif 12A-010 J60 post allo L1710153
-* MISSING : "L1714853" "L1816858"
-* Modification DUPIN L1714848 to L1714853
+
+* 81 total list SGE
+
+* DISPO CASH 54
+  * DECOURCELLE erreur meme L1706711 pour pré-greffe et J60 post allo
+    * Modif 12A-010 J60 post allo L1710153
+  * MISSING : "L1714853" "L1816858"
+  * Modification DUPIN L1714848 to L1714853
+  * ANALYSE NEGATINVE : 
+    * 19A-004 LEMAIRE,Maxime
+    * 22A-048 DRUJONT,Nicolas
+
+* NON DISPO CASH 19
+  * 01A-029 GILLARD BOTTEQUIN,LEA NEG 
+  * A priori RUIZ SERRANO,GERARD pas de diag 
+  * PLAINE,EMILIE ADN326-94_DG ?? 
+
+* 71 total , 3 AN 1 NR = 75
+
+* no incl "01A-029" récupérer 
+* AUCUNE TRACE sur tout onco hémato "14A-003" "19A-004" "22A-048"
+* même patient plusieurs samples
+
+* Analyse négative 
+
+* AU TOTAL 81 fichiers SGE 
+  * 5 Dégager : 
+    * 01A-029 NEG
+    * 14A-003 NR
+    * 19A-004 NEG
+    * 22A-046 ADN326-94_DG ? 
+    * 22A-048 NEG
+
+* AJOUTER MANUELLEMENT c.330G>T PLAINE EMILIE
