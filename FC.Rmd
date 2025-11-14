@@ -112,6 +112,7 @@ process_xml_folder <- function(folder_path) {
 (
   read_xlsx("./input/bm/thèque Big1.xlsx")
   %>% clean_names()
+  %>% mutate(type = str_to_upper(type))
 ) -> raw_bm_BIG
 
 (
@@ -158,6 +159,13 @@ process_xml_folder <- function(folder_path) {
   %>% group_by(n_inclusion)
   %>% mutate(n = n())
 ) -> joined
+
+# (
+#   joined 
+#   %>% filter(stade %in% c("J30 post allo", "J100 post allo", "3mois post allo", "post allo"))
+#   %>% select(n_inclusion, nom, prenom, stade, n_bm)
+#   %>% write_tsv(., pipe("pbcopy"))
+# ) -> NDU_postG
 
 # (
 #   joined
@@ -330,7 +338,7 @@ missing_incl <- setdiff(n_incl_SGE$n_inclusion, unique(all_by_row$id))
   %>% filter(str_detect(PATH, "xml"))
 ) -> n_incl_path
 
-all_variants_data <- process_xml_folder("./input/bm/XML/selected_nincl_101125/")
+# all_variants_data <- process_xml_folder("./input/bm/XML/selected_nincl_101125/")
 
 (
   all_variants_data
@@ -367,9 +375,15 @@ all_variants_data <- process_xml_folder("./input/bm/XML/selected_nincl_101125/")
    %>% mutate(proteinic_position = str_extract(proteinic_position, "p.*"))
 ) -> FC_101125
 
-# length(unique(FC_101125$ndosbm_suivi))
+length(unique(FC_101125$ndosbm_suivi))
 
-writexl::write_xlsx(FC_101125, "./output/bm/FC_MAGNET_AML_101125.xlsx")
+# writexl::write_xlsx(FC_101125, "./output/bm/FC_MAGNET_AML_101125.xlsx")
+
+# (
+#   read_xlsx("./output/bm/FC_MAGNET_AML_101125.xlsx")
+#   %>% distinct(ndosbm_diag)
+#   %>% nrow()
+# )
 
 ```
 
@@ -406,3 +420,190 @@ writexl::write_xlsx(FC_101125, "./output/bm/FC_MAGNET_AML_101125.xlsx")
     * 22A-048 NEG
 
 * AJOUTER MANUELLEMENT c.330G>T PLAINE EMILIE
+
+* Suppresion du variant RUNX1 NOEL,FRE
+* Supression du variant FLT3 DUPIN
+
+# 191125
+
+* 36 p MAGNET_AML
+
+```{r}
+
+################################################################################
+# BIG INFOS SAMPLE
+################################################################################
+
+
+
+(
+  read_xlsx("./input/RUN_191125.xlsx")
+  %>% clean_names()
+  %>% filter(projet == "MAGNET_AML")
+  # %>% mutate(
+  #   ddp = case_when(
+  #     str_detect(ddp, "^\\d+$") ~ as_date(as.numeric(ddp), origin = "1899-12-30"),
+  #     TRUE                        ~ dmy(ddp)
+  #   )
+  # )
+  %>% mutate(ndosbm = str_remove(prelevement, "D[0-9]{1,2}"))
+  %>% select(patient, ndosbm)
+  %>% mutate(to_keep = TRUE)
+  # %>% select(ndosbm)
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> list_run_mrd191125
+
+# 36 samples 
+
+(
+  bm_BIG
+  %>% left_join(list_run_mrd191125, by = c("n_bm" = "ndosbm"))
+  %>% group_by(n_inclusion)
+  %>% filter(any(to_keep == TRUE))
+  %>% filter(to_keep == TRUE | stade == "diag")
+  %>% arrange(n_inclusion, desc(stade), desc(ngs))
+  %>% group_by(n_inclusion, stade)
+  %>% slice(1)
+  # %>% arrange(n_inclusion, desc(stade), desc(ngs))
+  # %>% group_by(n_inclusion)
+  # %>% mutate(n = n())
+  %>% ungroup()
+  %>% filter(stade == "diag")
+  # %>% select(n_bm)
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> joined
+
+# 4 patients avec 2 points
+# 32 patients donc 
+
+# 22A-022 pas de ndosbm
+
+################################################################################
+# POSMYE
+################################################################################
+
+(
+  read_xlsx("./input/bm/BASE BIG1 FINALE 2023 patients 22_07_2024_IDENTITES_POSMYE.xlsx", sheet = 2)
+  %>% clean_names()
+) -> raw_POSMYE
+
+(
+  bm_BIG
+  %>% left_join(list_run_mrd191125, by = c("n_bm" = "ndosbm"))
+  %>% filter(to_keep == TRUE)
+) -> n_incl_SGE_191125
+
+(
+  raw_POSMYE
+  %>% filter(id %in% n_incl_SGE_191125$n_inclusion)
+) -> POSMYE_191125
+
+(
+  POSMYE_191125
+  %>% filter(!is.na(x7))
+  %>% mutate(x6 = str_extract(x6, "L.*"))
+  # %>% select(ndosbm)
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> SQXT_ndosbm_191125
+
+# 3 NA 
+# AUMONT, ERIC
+# ARICAN, JACQUES
+# JARNIGON, AXEL
+
+# 29 patients
+
+################################################################################
+# OPEN XML
+################################################################################
+
+all_variants_data <- process_xml_folder("/Users/augustin_boudry/R/projets/251104_MAGNET_AML/input/bm/XML/191125_selected")
+
+(
+  all_variants_data
+  %>% mutate(ndosbm = str_remove(xml_file_name, "D[0-9]{2}.xml"))
+  %>% select(ndosbm, nucleotidic_position, chromosome, position, reference, alternative)
+  %>% distinct()
+  %>% ungroup()
+) -> variant_data
+
+length(unique(variant_data$ndosbm))
+
+
+(
+  SQXT_ndosbm_191125
+  %>% separate_rows(posmye, sep = "\r\n")
+  %>% mutate(gene = str_extract(posmye, list_gene_LOVER_2023))
+  %>% mutate(vaf = str_extract(posmye, "\\d+(\\.\\d+)?%")) 
+  %>% mutate(vaf = as.numeric(str_remove(vaf, "%")))
+  %>% mutate(c. = str_extract(posmye, "c.* :"))
+  %>% mutate(c. = ifelse(is.na(c.), str_extract(posmye, "c.* \\("),c.))
+  %>% mutate(c. = str_remove(c., "( :)| \\("))
+  %>% mutate(p. = str_extract(posmye, "p\\..*\\("))
+  %>% mutate(p. = str_remove(p., "\\("))
+  %>% mutate(p. = ifelse(is.na(p.), "p.intron", p.))
+  %>% mutate(mutation = paste0(gene, "_", p.))
+  %>% mutate(gene = case_when(
+    gene == "FLT3" & str_detect(c., "dup|in") ~ "FLT3-ITD",
+    gene == "FLT3" & str_detect(c., ">") ~ "FLT3-TKD",
+    TRUE ~ gene
+  ))
+  %>% select(-p.)
+  %>% left_join(variant_data, by=c("ndosbm", "c." = "nucleotidic_position"))
+  %>% group_by(gene, `c.`)
+  %>% fill(chromosome, position, reference, alternative,
+       .direction = "downup")
+  %>% ungroup()
+  %>% filter(posmye != "Analyse négative")
+  %>% ungroup()
+) -> SQXT_ndosbm_row
+
+length(unique(SQXT_ndosbm_row$ndosbm))
+
+(
+  POSMYE_101125
+  %>% filter(is.na(x7))
+  %>% mutate(x6 = str_extract(x6, "L.*"))
+  # %>% select(ndosbm)
+  # %>% write_tsv(., pipe("pbcopy"))
+  %>% filter(posmye != "Analyse négative.")
+  %>% filter(posmye != ".")
+) -> ndosbm_missing
+
+(
+  n_incl_SGE_191125
+  %>% select(n_inclusion, ndosbm_suivi = n_bm)
+  %>% left_join(POSMYE_191125 %>% select(n_inclusion = id, ndosbm_diag = ndosbm))
+  %>% mutate(to_drop = FALSE, .before = "n_inclusion")
+  %>% mutate(to_drop = ifelse(!str_detect(ndosbm_diag, "L"), TRUE, to_drop))
+) -> correspondance_diag_suivi
+
+
+(
+  correspondance_diag_suivi
+  %>% group_by(n_inclusion)
+  %>% mutate(n = n())
+  %>% ungroup()
+  %>% filter(to_drop == FALSE)
+  %>% left_join(SQXT_ndosbm_row %>% rename(ndosbm_diag = ndosbm))
+  %>% mutate(transcript = "")
+  %>% mutate(exon = "")
+  %>% left_join(bm_BIG %>% select(ndosbm_diag = n_bm, DDG = ddp))
+  %>% left_join(bm_BIG %>% select(ndosbm_suivi = n_bm, date_suivi = ddp))
+  %>% select(ndosbm_diag, lib=x7,	gene, chromosome, position, reference, 
+  alternative, transcript, exon, nucleotidic_position = `c.`,	
+  proteinic_position = mutation, vaf_percent = vaf, ndosbm_suivi, date_suivi,
+   nom_patient = nom, DDG)
+   #  DDG = ddp
+   %>% arrange(nom_patient, ndosbm_suivi)
+   %>% mutate(proteinic_position = str_extract(proteinic_position, "p.*"))
+   %>% filter(ndosbm_diag != "L1602636")
+   %>% filter(ndosbm_diag != "L1606609")
+) -> FC_191125
+
+writexl::write_xlsx(FC_191125, "./output/191125_FC_MAGNET_AML.xlsx")
+
+length(unique(FC_191125$nom_patient))
+
+
+```
