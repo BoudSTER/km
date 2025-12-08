@@ -129,6 +129,42 @@ process_xml_folder <- function(folder_path) {
 (
   read_xlsx("./input/bm/BASE BIG1 FINALE 2023 patients 22_07_2024_IDENTITES_POSMYE.xlsx", sheet = 2)
   %>% clean_names()
+    %>% add_row(
+    "id" = "13A-023",
+    "nom" = "VANDENBROUCKE,CAROLINE",
+    # "ddn" = ,
+    "ndosbm" = "L2311545",
+    "posmye" = "UBTF exon 13 c.1335_1341delins82 : p.W445_D447delinsCLSEKKKVRLPGGALSESELTRLLARMC (VAF 50%)\r\nWT1 exon 1 c.646+2dup :  (VAF 40%)\r\nWT1 exon 7 c.1142C>A : p.S381X (VAF 0.81%)\r\nZBTB7A exon 2 c.1204C>T : p.R402C (VAF 3%)",
+    # "x6" = ,
+    # "x7"   
+  )
+  %>% add_row(
+    "id" = "13A-020",
+    "nom" = "CAUDMONT,CLEMENTINE",
+    # "ddn" = ,
+    "ndosbm" = "L2303763",
+    "posmye" = "BCOR exon 2 c.31G>A : p.V11I (VAF 1.01%)\r\nFLT3 exon 14 c.1766_1834dup : p.Y589_E611dup (VAF 2.74%)\r\nMYC exon 2 c.221C>T : p.P74L (VAF 1.38%)\r\nNPM1 exon 11 c.863_864insCCTG : p.W288CfsX12 (VAF 18%)\r\nNRAS exon 2 c.38G>T : p.G13V (VAF 1.11%)\r\nPTPN11 exon 13 c.1505C>T : p.S502L (VAF 1.1%)\r\nRAD21 exon 10 c.1170_1171dup : p.R391HfsX66 (VAF 20%)",
+    # "x6" = ,
+    # "x7"   
+  )
+  %>% add_row(
+    "id" = "13A-025",
+    "nom" = "LEROY,BRUNO",
+    # "ddn" = ,
+    "ndosbm" = "L2321998",
+    "posmye" = "TP53 exon 4 c.227_279del : p.A76VfsX55 (VAF 17%)\r\nTP53 exon 6 c.672G>A : p.E224E (VAF 32%)",
+    # "x6" = ,
+    # "x7"   
+  )
+  %>% add_row(
+    "id" = "12A-023",
+    "nom" = "BRICOUT,YOHANN",
+    # "ddn" = ,
+    "ndosbm" = "L2319548",
+    "posmye" = "ASXL1 exon 12 c.2099_2100insGGCA : p.Y700X (VAF 46%)\r\nNRAS exon 2 c.34G>A : p.G12S (VAF 44%)\r\nWT1 exon 1 c.395del : p.P132RfsX26 (VAF 94%)",
+    # "x6" = ,
+    # "x7"   
+  )
 ) -> raw_POSMYE
 
 # FICHIER DE CARINE 
@@ -631,8 +667,8 @@ length(unique(FC_191125$nom_patient))
   read_xls("./input/bm/TW-MRD-031225-DRAGEN.xls")
   %>% clean_names()
   %>% filter(projet == "MAGNET_AML")
-  # %>% count(patient)
-  # %>% filter(n > 1)
+  %>% count(patient)
+  %>% filter(n > 1)
 ) -> nom_run
 
 # 6 patients en doubles 
@@ -645,66 +681,79 @@ length(unique(FC_191125$nom_patient))
   # %>% mutate(to_keep = TRUE)
   %>% mutate(n_bm = str_remove(prelevement, "D[0-9]{2}"))
   %>% left_join(list_ndosbm, by = c("n_bm" = "ndosbm"))
+  %>% filter(!str_detect(patient, "BIG,"))
 ) -> ndosbm_run
 
-# 95 samples au total
 
 (
-  bm_BIG
-  %>% left_join(ndosbm_run)
-  %>% group_by(n_inclusion)
-  %>% filter(any(to_keep == TRUE))
-  %>% filter(to_keep == TRUE | stade == "diag")
-  %>% arrange(n_inclusion, desc(stade), desc(ngs))
-  %>% group_by(n_inclusion, stade)
+  list_ndosbm
+  %>% mutate(to_keep = ndosbm %in% ndosbm_run$n_bm)
+  %>% group_by(id_1)
+  %>% filter(any(to_keep))
+  %>% filter(str_detect(stad, "diag"))
+  %>% filter(!is.na(ndosbm))
+  %>% arrange(id_1, stad)
   %>% slice(1)
-  %>% arrange(n_inclusion, desc(stade), desc(ngs))
-  %>% ungroup()
-  %>% group_by(n_inclusion)
-  %>% mutate(n = n())
-) -> joined
+  %>% select(id_1, ndosbm_diag = ndosbm)
+) -> list_diag
+
+setdiff(ndosbm_run$id_1, tmp$id_1)
+# 71 + 6 + 2 = 79 on retombe sur nos pates 
+# 2 PATIENTS 25A-048 25A-053 RIEN AU DIAG RECUP RC1 ? 
 
 (
-  joined
-  %>% select(n_inclusion, stade, n_bm, ngs)
-  # %>% count(n_inclusion)
-) -> selected
+  ndosbm_run
+  %>% rename(ndosbm_suivi = n_bm)
+  %>% left_join(list_diag)
+  %>% filter(!is.na(ndosbm_diag))
+) -> ndosbm_run_diag_suivi
 
-# 81 - 6 = 75 OK on a tout les diag !!! 
-
-(
-  selected
-  %>% filter(stade == "diag")
-) -> filtered_diag
-
-# 22A-046 PAS DE DIAG
-
-# (
-#   selected
-#   %>% mutate(stade = ifelse(stade != "diag", "suivi", stade))
-#   %>% pivot_wider(names_from = stade, values_from = n_bm)
-# ) -> cleaned
+# 77 
 
 (
   raw_POSMYE
-  %>% filter(id %in% filtered_diag$n_inclusion)
-  # %>% filter(!str_detect(posmye, "négative"))
-  # %>% filter(posmye != ".")
+  %>% filter(id %in% ndosbm_run_diag_suivi$id_1)
+  %>% filter(!str_detect(posmye, "négative"))
+  %>% filter(posmye != ".")
+  # %>% select(ndosbm)
+  # # %>% write_tsv(., pipe("pbcopy"))
 ) -> POSMYE_021225
 
-# - 3 NEG - 1 "." = 71 - 1 KD6MA 05A-056
+# 71 + 6 = 77 
+# - 3 ana neg ou . = 68
+
 
 (
-  POSMYE_021225
-  %>% filter(!is.na(x6))
-  %>% mutate(x6 = str_extract(x6, "L.*"))
-) -> SSQXT_POSMYE_021225
+  read_tsv("./input/bm/path_021215.tsv")
+  %>% clean_names()
+  %>% filter(!is.na(path))
+) -> path_xml
+
+# 11 missing = 57
 
 (
-  SSQXT_POSMYE_021225
-  %>% select(x6)
-  %>% write_tsv(., pipe("pbcopy"))
-)
+  read_tsv("./input/bm/path_021215.tsv")
+  %>% clean_names()
+  %>% filter(is.na(path))
+) -> path_xml_missing
+
+(
+  read_tsv("./input/bm/path_021215.tsv")
+  %>% clean_names()
+  %>% filter(!is.na(path))
+  %>% filter(!str_detect(path, "GROUP-100"))
+  %>% group_by(id)
+  %>% slice_max(date)
+  # %>% ungroup()
+  # %>% select(path, -id)
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> path_xml
+
+# (
+#   SSQXT_POSMYE_021225
+#   %>% select(x6)
+#   %>% write_tsv(., pipe("pbcopy"))
+# )
 
 all_variants_data <- process_xml_folder("./input/bm/XML/selected_021225/")
 
@@ -719,7 +768,9 @@ all_variants_data <- process_xml_folder("./input/bm/XML/selected_021225/")
 length(unique(variant_data$ndosbm))
 
 (
-  SSQXT_POSMYE_021225
+  POSMYE_021225
+  %>% ungroup()
+  %>% filter(!(ndosbm %in% path_xml_missing$id))
   %>% separate_rows(posmye, sep = "\r\n")
   %>% mutate(gene = str_extract(posmye, list_gene_LOVER_2023))
   %>% mutate(vaf = str_extract(posmye, "\\d+(\\.\\d+)?%")) 
@@ -744,14 +795,57 @@ length(unique(variant_data$ndosbm))
   %>% ungroup()
   %>% filter(posmye != "Analyse négative")
   %>% ungroup()
-  %>% mutate(chromosome = ifelse(nom == "DIJON,VALERIE" & gene == "NPM1", "chr5", chromosome))
-  %>% mutate(position = ifelse(nom == "DIJON,VALERIE" & gene == "NPM1", 170837544, position))
-  %>% mutate(alternative = ifelse(nom == "DIJON,VALERIE" & gene == "NPM1", "TCTGC", alternative))
-  %>% mutate(reference = ifelse(nom == "DIJON,VALERIE" & gene == "NPM1", "T", reference))
-  %>% filter(gene != "KDM6A")
-) -> SQXT_ndosbm_row
+  %>% filter(posmye != "")
+  %>% mutate(
+    chromosome = case_when(
+      str_detect(mutation, "WT1_p.R370PfsX15") ~ "chr11",
+      TRUE ~ chromosome
+    ),
+    position = case_when(
+      str_detect(mutation, "WT1_p.R370PfsX15") ~ "32417943",
+      TRUE ~ position
+    ),
+    reference = case_when(
+      str_detect(mutation, "WT1_p.R370PfsX15") ~ "C",
+      TRUE ~ reference
+    ),
+    alternative = case_when(
+      str_detect(mutation, "WT1_p.R370PfsX15") ~ "CG",
+      TRUE ~ alternative
+    )
+  )
+  %>% mutate(
+    chromosome = case_when(
+      str_detect(c., "c.863_864insCATG") ~ "chr5",
+      TRUE ~ chromosome
+    ),
+    position = case_when(
+      str_detect(c., "c.863_864insCATG") ~ "170837545",
+      TRUE ~ position
+    ),
+    reference = case_when(
+      str_detect(c., "c.863_864insCATG") ~ "C",
+      TRUE ~ reference
+    ),
+    alternative = case_when(
+      str_detect(c., "c.863_864insCATG") ~ "CTGCA",
+      TRUE ~ alternative
+    )
+  )
 
-length(unique(SQXT_ndosbm_row$ndosbm))
+  # %>% mutate(chromosome = ifelse(nom == "DIJON,VALERIE" & gene == "NPM1", "chr5", chromosome))
+) -> ndosbm_row
+
+length(unique(ndosbm_row$ndosbm))
+
+################################################################################
+# BIG
+################################################################################
+
+(
+  read_xlxs("./input/bm/XML/BIG_selected_021225/BIG FILO AB.xlsx")
+  %>% clean_names()
+) -> BIG_021225
 
 # (
 #   POSMYE_101125
