@@ -40,50 +40,95 @@ library(xml2)
 ```
 
 ```{r FUNCTIONS}
+# extract_variant_info <- function(xml_file_path) {
+#   cat(xml_file_path, file=stderr())
+  
+#   # Charger le fichier XML
+#   xml_file <- read_xml(xml_file_path)
+  
+#   # Obtenir le noeud racine
+#   root_node <- xml_root(xml_file)
+  
+#   # Trouver tous les noeuds 'variant'
+#   variant_nodes <- xml_find_all(root_node, ".//variant")
+  
+#   # Extraire le nom du fichier XML sans son chemin complet
+#   xml_file_name <- basename(xml_file_path)
+  
+#   # Mapper sur chaque 'variant' pour extraire les informations
+#   variants_data <- map_df(variant_nodes, function(variant) {
+    
+#     # Extraire les noeuds 'refseq'
+#     refseq_nodes <- xml_find_all(variant, ".//refseq")
+    
+#     # Mapper sur chaque 'refseq' pour obtenir les détails
+#     map_df(refseq_nodes, function(refseq) {
+#       tibble(
+#         chromosome = xml_text(xml_find_first(variant, ".//chromosome")),
+#         position = xml_text(xml_find_first(variant, ".//position")),
+#         reference = xml_text(xml_find_first(variant, ".//reference")),
+#         alternative = xml_text(xml_find_first(variant, ".//alternative")),
+#         gene = xml_text(xml_find_first(refseq, ".//gene")),
+#         exon = xml_text(xml_find_first(refseq, ".//exon")),
+#         function_type = xml_text(xml_find_first(refseq, ".//function")),
+#         transcript = xml_text(xml_find_first(refseq, ".//transcript")),
+#         nucleotidic_position = xml_text(xml_find_first(refseq, ".//nucleotidic_position")),
+#         proteinic_position = xml_text(xml_find_first(refseq, ".//proteinic_position")),
+#         prefered_transcript = xml_text(xml_find_first(refseq, ".//prefered_transcript")),
+#         xml_file_name = xml_file_name  # Ajouter le nom du fichier XML
+#       )
+#     })
+#   })
+
+
+#   variants_data <- variants_data # %>% filter(prefered_transcript == "YES")
+  
+#   return(variants_data)
+# }
+
 extract_variant_info <- function(xml_file_path) {
-  cat(xml_file_path, file=stderr())
-  
-  # Charger le fichier XML
-  xml_file <- read_xml(xml_file_path)
-  
-  # Obtenir le noeud racine
+  cat(xml_file_path, file = stderr())
+
+  xml_file  <- read_xml(xml_file_path)
   root_node <- xml_root(xml_file)
-  
-  # Trouver tous les noeuds 'variant'
-  variant_nodes <- xml_find_all(root_node, ".//variant")
-  
-  # Extraire le nom du fichier XML sans son chemin complet
+
+  # Infos globales (niveau rapport)
+  main_sample_name <- xml_text(xml_find_first(root_node, ".//main_sample_name"))
+
+  # Lib : au niveau pipelines_def/pipeline_def (si plusieurs, on les concatène)
+  lib <- xml_find_all(root_node, ".//pipelines_def/pipeline_def/lib") |>
+    xml_text() |>
+    unique() |>
+    paste(collapse = ";")
+
+  variant_nodes <- xml_find_all(root_node, ".//variants/variant")
   xml_file_name <- basename(xml_file_path)
-  
-  # Mapper sur chaque 'variant' pour extraire les informations
-  variants_data <- map_df(variant_nodes, function(variant) {
-    
-    # Extraire les noeuds 'refseq'
-    refseq_nodes <- xml_find_all(variant, ".//refseq")
-    
-    # Mapper sur chaque 'refseq' pour obtenir les détails
-    map_df(refseq_nodes, function(refseq) {
-      tibble(
-        chromosome = xml_text(xml_find_first(variant, ".//chromosome")),
-        position = xml_text(xml_find_first(variant, ".//position")),
-        reference = xml_text(xml_find_first(variant, ".//reference")),
-        alternative = xml_text(xml_find_first(variant, ".//alternative")),
-        gene = xml_text(xml_find_first(refseq, ".//gene")),
-        exon = xml_text(xml_find_first(refseq, ".//exon")),
-        function_type = xml_text(xml_find_first(refseq, ".//function")),
-        transcript = xml_text(xml_find_first(refseq, ".//transcript")),
-        nucleotidic_position = xml_text(xml_find_first(refseq, ".//nucleotidic_position")),
-        proteinic_position = xml_text(xml_find_first(refseq, ".//proteinic_position")),
-        prefered_transcript = xml_text(xml_find_first(refseq, ".//prefered_transcript")),
-        xml_file_name = xml_file_name  # Ajouter le nom du fichier XML
+
+  variants_data <- purrr::map_df(variant_nodes, function(variant) {
+
+    refseq_nodes <- xml_find_all(variant, ".//refseqs/refseq")
+
+    purrr::map_df(refseq_nodes, function(refseq) {
+      tibble::tibble(
+        main_sample_name = main_sample_name,
+        lib = lib,
+        chromosome = xml_text(xml_find_first(variant, "./chromosome")),
+        position = xml_text(xml_find_first(variant, "./position")),
+        reference = xml_text(xml_find_first(variant, "./reference")),
+        alternative = xml_text(xml_find_first(variant, "./alternative")),
+        gene = xml_text(xml_find_first(refseq, "./gene")),
+        exon = xml_text(xml_find_first(refseq, "./exon")),
+        function_type = xml_text(xml_find_first(refseq, "./function")),
+        transcript = xml_text(xml_find_first(refseq, "./transcript")),
+        nucleotidic_position = xml_text(xml_find_first(refseq, "./nucleotidic_position")),
+        proteinic_position = xml_text(xml_find_first(refseq, "./proteinic_position")),
+        prefered_transcript = xml_text(xml_find_first(refseq, "./prefered_transcript")),
+        xml_file_name = xml_file_name
       )
     })
   })
 
-
-  variants_data <- variants_data # %>% filter(prefered_transcript == "YES")
-  
-  return(variants_data)
+  variants_data
 }
 
 # Fonction pour obtenir la liste des fichiers XML dans un dossier
@@ -173,7 +218,15 @@ process_xml_folder <- function(folder_path) {
   %>% clean_names()
   %>% select(id_1:nom_prenom, contains("MOELLE"),  contains("SANG"))
   %>% pivot_longer(diag_moelle:rechute_sang, names_to = "stad", values_to = "ndosbm")
-) -> list_ndosbm
+) -> list_ndosbm_BIG
+
+# ALL POSMYE NICO
+(
+  read_xlsx("./input/bm/POSMYE_BIG.xlsx")
+  %>% clean_names()
+  %>% mutate(nom = ifelse(nom == "FILO", paste0("BIG,",id), nom))
+  %>% rename(ndosbm_diag = ndosbm)
+) -> ALL_POSMYE
 ```
 
 # 101125
@@ -1105,4 +1158,224 @@ writexl::write_xlsx(ALL_021225, "./output/021225mut_to_track.xlsx")
 # INTROUVABLE 
 # L2105548		CEBPA							c.109_127del	CEBPA_p.intron		L2109216		MAOUCHE,SOUHAILA	
 # L2105548		CEBPA							c.936_937insCAA	CEBPA_p.intron		L2109216		MAOUCHE,SOUHAILA	
+```
+
+# TW-MRD-161225
+```{r}
+(
+  read_xlsx("./input/bm/TW-MRD-DRAGEN-161225.xlsx")
+  %>% clean_names()
+  # %>% count(patient)
+  # %>% filter(n > 1)
+  %>% filter(prelevement != "T-NEG-161225")
+  %>% filter(prelevement != "L2510791D01")
+  %>% filter(prelevement != "L2510790D01")
+  %>% mutate(n_bm = str_remove(prelevement, "D[0-9]{2}"))
+  # %>% left_join(list_ndosbm, by = c("n_bm" = "ndosbm"))
+  %>% left_join(ALL_POSMYE, by = c("patient" = "nom"))
+  # %>% select(ndosbm_diag)
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> RUN_161225
+
+# writexl::write_xlsx(RUN_161225 %>% select(patient, ndosbm_diag, posmye_juillet2025_5), "./output/161225.xlsx")
+
+
+all_variants_data_161225 <- process_xml_folder("./input/bm/XML/161225_XML_BASE/patient")
+
+(
+  all_variants_data_161225
+  %>% mutate(ndosbm = str_remove(xml_file_name, "D[0-9]{2}.xml"))
+  %>% filter(prefered_transcript == "YES")
+  %>% select(dossier = main_sample_name, ndosbm, lib, nucleotidic_position, proteinic_position, chromosome, position, reference, alternative, transcript, exon)
+  %>% distinct()
+  %>% ungroup()
+) -> variant_data161225
+
+(
+  read_xlsx("./output/161225.xlsx")
+  %>% filter(!is.na(CHECK))
+) -> done
+
+length(unique(done$ndosbm_diag)) # 17
+
+(
+  read_xlsx("./output/161225.xlsx")
+  %>% filter(is.na(CHECK))
+  %>% separate_rows(posmye_juillet2025_5, sep = "\\\\br\\.|\\r?\\n")
+  %>% mutate(posmye_juillet2025_5 = str_remove(posmye_juillet2025_5, "\\\\"))
+  %>% mutate(gene = str_extract(posmye_juillet2025_5, list_gene_LOVER_2023))
+  %>% mutate(vaf = str_extract(posmye_juillet2025_5, "\\d+(\\.\\d+)?%")) 
+  %>% mutate(vaf = as.numeric(str_remove(vaf, "%")))
+  %>% mutate(c. = str_extract(posmye_juillet2025_5, "c.* :"))
+  %>% mutate(c. = ifelse(is.na(c.), str_extract(posmye_juillet2025_5, "c.* \\("),c.))
+  %>% mutate(c. = str_remove(c., "( :)| \\("))
+  %>% mutate(p. = str_extract(posmye_juillet2025_5, "p\\..*\\("))
+  %>% mutate(p. = str_remove(p., "\\("))
+  %>% mutate(p. = ifelse(is.na(p.), "p.intron", p.))
+  %>% mutate(mutation = paste0(gene, "_", p.))
+  %>% left_join(variant_data161225, by=c("ndosbm_diag" = "ndosbm", "c." = "nucleotidic_position"))
+  %>% mutate(
+    chromosome = case_when(
+      str_detect(c., "c.868_870delinsCGGTTCC") ~ "chr5",
+      TRUE ~ chromosome
+    ),
+    position = case_when(
+      str_detect(c., "c.868_870delinsCGGTTCC") ~ "170837554",
+      TRUE ~ position
+    ),
+    reference = case_when(
+      str_detect(c., "c.868_870delinsCGGTTCC") ~ "G",
+      TRUE ~ reference
+    ),
+    alternative = case_when(
+      str_detect(c., "c.868_870delinsCGGTTCC") ~ "GTTCC",
+      TRUE ~ alternative
+    ),
+    exon = case_when(
+      str_detect(c., "c.868_870delinsCGGTTCC") ~ "11",
+      TRUE ~ exon
+    )
+  )
+  %>% mutate(
+    chromosome = case_when(
+      str_detect(c., "c.1804_1805ins51") ~ "chr13",
+      TRUE ~ chromosome
+    ),
+    position = case_when(
+      str_detect(c., "c.1804_1805ins51") ~ "28608251",
+      TRUE ~ position
+    ),
+    reference = case_when(
+      str_detect(c., "c.1804_1805ins51") ~ "T",
+      TRUE ~ reference
+    ),
+    alternative = case_when(
+      str_detect(c., "c.1804_1805ins51") ~ "TTGAGATCATATTCATATTCTCTGAAATCAACGTAGAAGTACTCATTATTGG",
+      TRUE ~ alternative
+    ),
+    exon = case_when(
+      str_detect(c., "c.1804_1805ins51") ~ "14",
+      TRUE ~ exon
+    )
+  )
+) -> all # 76 = 93
+
+(
+  all
+  # %>% filter(is.na(dossier))
+  %>% filter(posmye_juillet2025_5 == "Analyse négative")
+  %>% mutate(
+    dossier = case_when(
+      str_detect(ndosbm_diag, "L2013684") ~ "L2013684D01",
+      TRUE ~ dossier
+    ),
+    lib = case_when(
+      str_detect(ndosbm_diag, "L2013684") ~ "TW-MYELOV-260121",
+      TRUE ~ ndosbm_diag
+  ))
+  %>% mutate(
+    dossier = case_when(
+      str_detect(ndosbm_diag, "L2013806") ~ "L2013806D01",
+      TRUE ~ dossier
+    ),
+    lib = case_when(
+      str_detect(ndosbm_diag, "L2013806") ~ "TW-LOVER-HEMATO-141022",
+      TRUE ~ lib
+  ))
+  %>% mutate(
+    dossier = case_when(
+      str_detect(ndosbm_diag, "L2009832") ~ "L2009832D01",
+      TRUE ~ dossier
+    ),
+    lib = case_when(
+      str_detect(ndosbm_diag, "L2009832") ~ "TW-MYELOV-140121",
+      TRUE ~ lib
+  ))
+  %>% mutate(
+    dossier = case_when(
+      str_detect(ndosbm_diag, "L2100515") ~ "L2100515D01",
+      TRUE ~ dossier
+    ),
+    lib = case_when(
+      str_detect(ndosbm_diag, "L2100515") ~ "TW-MYELOV-260121",
+      TRUE ~ lib
+  ))
+  %>% select(-c., -p.)
+) -> all_neg
+
+neg_import <- unique(all_neg[, c("dossier")])
+neg_import$source_file <- paste0(neg_import$dossier, "_MANUAL.XLSX")
+
+write.table(
+  neg_import["source_file"],
+  file = "./output/161225_all_neg_import_log.tsv",
+  sep = "\t",
+  row.names = FALSE,
+  col.names = TRUE,
+  quote = FALSE
+)
+
+(
+  all
+  %>% filter(!is.na(dossier))
+  %>% select(ndosbm_diag, dossier, lib, gene, chromosome, position, reference, alternative, transcript, exon, nucleotidic_position = c., proteinic_position, var_freq = vaf)
+  %>% ungroup()
+  %>% group_by(ndosbm_diag)
+  %>% fill(dossier, lib, .direction = "updown")
+  %>% ungroup()
+  %>% select(-ndosbm_diag)
+  # %>% filter(is.na(gene))
+) -> all_pos
+
+all_pos$source_file <- paste0(all_pos$dossier, "_MANUAL.XLSX")
+
+write.table(
+  all_pos,
+  file = "./output/161225_all_pos_variants.tsv",
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE,
+  na = ""
+)
+
+length(unique(all_pos$ndosbm_diag))
+
+pos_import <- unique(all_pos[, c("dossier")])
+pos_import$source_file <- paste0(pos_import$dossier, "_MANUAL.XLSX")
+
+write.table(
+  pos_import["source_file"],
+  file = "./output/all_pos_import_log.tsv",
+  sep = "\t",
+  row.names = FALSE,
+  col.names = TRUE,
+  quote = FALSE
+)
+
+# - TNGE -15G-008 -15G-012 = 93
+
+(
+  read_tsv("./input/bm/path_161225.tsv")
+  %>% clean_names()
+  %>% filter(!str_detect(path, "RES_L"))
+  %>% filter(!str_detect(path, ".xlsx"))
+  %>% mutate(folder = str_extract(path, "(patient)|(GROUP-100000)|(GROUP-100)"))
+  %>% filter(!(id == "L2009850" & is.na(folder)))
+  %>% filter(!(id == "L2009824" & is.na(folder)))
+  %>% filter(!(id == "L2009845" & is.na(folder)))
+  %>% filter(!(id == "L2009822" & is.na(folder)))
+  %>% filter(!(id == "L2009832" & is.na(folder)))
+  %>% filter(!(id == "L2012679" & is.na(folder)))
+  %>% filter(!(id == "L2012675" & is.na(folder)))
+  %>% group_by(id, folder)
+  %>% slice_max(date)
+  %>% group_by(id)
+  %>% mutate(n = n())
+  # %>% ungroup()
+  # %>% filter(folder == "GROUP-100000")
+  # %>% select(path)
+  # %>% write_tsv(., pipe("pbcopy"))
+  # %>% ungroup()
+  # %>% distinct(id)
+) -> path_161225
 ```
