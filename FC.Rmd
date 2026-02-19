@@ -447,6 +447,18 @@ clean_prot <- function(x) {
     ndosbm_diag = "L2303653",
     posmye_juillet2025_5 = "ASXL2 exon 12 c.1198_1199insCC : p.K400TfsX3 (VAF 45%)\\br.\\CSF3R exon 17 c.2254C>T : p.Q752X (VAF 0.99%)\\br.\\ZBTB7A exon 2 c.522dup : p.A175RfsX19 (VAF 1.78%)"
   )
+  %>% add_row(
+    id = "13A-019",
+    nom = "DEBIEVRE,ORIANE",
+    ndosbm_diag = "L2303653",
+    posmye_juillet2025_5 = "ASXL2 exon 12 c.1198_1199insCC : p.K400TfsX3 (VAF 45%)\\br.\\CSF3R exon 17 c.2254C>T : p.Q752X (VAF 0.99%)\\br.\\ZBTB7A exon 2 c.522dup : p.A175RfsX19 (VAF 1.78%)"
+  )
+    %>% add_row(
+    id = "NOO-NOO",
+    nom = "GARCONNET,ELOISE",
+    ndosbm_diag = "L2511964",
+    posmye_juillet2025_5 = "FLT3 exon 14 c.1811_1812insCTTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGAATATGATCTCAAATGGGA : p.W603_E604insDLTGSSDNEYFYVDFREYEYDLKW (VAF 94%)\\br.\\UBTF exon 13 c.1299delinsGGCGCTTTACTCTGAGCTCTCGGCGCTTTCCTTGGGGGCGGAA : p.S433_E434insALYSELSALSLGAE (VAF 51%)",
+  )
 ) -> ALL_POSMYE
 
 list_gene_LOVER_2023 <- "ABCB11|ABL1|ABO|ANKRD26|ARID1A|ASXL1|ASXL2|ATG2B|ATM|ATRX|B2M|BAX|BCL2|BCOR|BCORL1|BIRC3|BRAF|BTG1|BTK|CALR|CARD11|CBL|CCL22|CCND1|CCND3|CCR4|CD274|CD28|CD58|CD79A|CD79B|CDKN2A|CDKN2B|CEBPA|CHEK2|CIITA|COG1|CREBBP|CRLF2|CSF2RA|CSF2RB|CSF3R|CTCF|CUX1|CXCR4|DDX3X|DDX41|DHX15|DHX34|DNMT3A|EBF1|EGLN1|EGR2|EP300|EPAS1|EPO|EPOR|ERG|ETNK1|ETV6|EVC|EZH2|F8|F9|F9|FBXW7|FERMT1|FGFR1|FIP1L1|FLT3|FOXO1|GATA1|GATA2|GNA13|GNAS|GNB1|GRM1|GSKIP|HRAS|ID3|IDH1|IDH2|IKZF1|IKZF3|IL2RG|IL3RA|IL5RA|IL7R|IRF4|ITPKB|JAK1|JAK2|JAK3|JUNB|KDM6A|KIT|KLF2|KMT2A|KMT2D|KRAS|L2HGDH|LAMA3|LUC7L2|MAP2K1|MAP3K14|MBD4|MEF2B|MPL|MSC|MYC|MYD88|NDUFV3|NF1|NFE2|NIPBL|NOTCH1|NOTCH2|NPHS2|NPM1|NRAS|NSD2|WHSC1|P2RY8|PAX5|PDGFRA|PDGFRB|PHF6|PIGA|PIM1|PLCG1|PLCG2|POT1|PPM1D|PRDM1|PROC|PROS1|PRPF8|PTEN|PTPN11|PTPRD|RAD21|RB1|RHOA|RIT1|RPS15|RUNX1|SAMD9|SAMD9L|SBDS|SERPINC1|SETBP1|SETD2|SF3B1|SH2B3|SLC12A6|SMC1A|SMC3|SOCS1|SOX6|SPI1|SRP72|SRSF2|SRY|STAG2|STAT1|STAT3|STAT5A|STAT5B|STAT6|TBL1XR1|TCF3|TCL1A|TDRD7|TERC|TERT|TET2|TNFAIP3|TNFRSF14|TP53|TYK2|U2AF1|UBA1|UBTF|VAV1|VCAN|VHL|VWF|WNK1|WT1|XPO1|ZBTB7A|ZRSR2"
@@ -1806,8 +1818,7 @@ write_tsv(path, "./output/path090126.tsv", col_names = FALSE)
   * L1801908
   * L1906975
   * L2015842
-* L1706535 L1806552 NPM1
-* L2012944 ? 
+
 ```{r}
 #sed -i "" -E 's/(dup)[^<]*/\1/g' *.xml
 #sed -i "" 's/\(del\)[^<]*/\1/g' *.xml
@@ -1982,5 +1993,226 @@ write_tsv(path, "./output/path300126.tsv", col_names = FALSE)
 ) -> all
 
 writexl::write_xlsx(all, "./output/bm/FC_260131.xlsx")
+
+```
+
+# 200226
+* 94 (TNEG et un echec)
+* 94 NDOSBM OK 
+* 89 (5 patients diag neg)
+* 61 path (28 patients mis 2 fois)
+* 50 (11 patients impossible de trouver des variants dans les XML :/ "L1503466"
+"L1510738" "L1511965" "L1511912" "L1602955" "L1607562" "L1607189" "L1607511"
+"L1701265" "L1700743" "L1701691" aucun variant retrouvé dans les XML)
+
+```{r}
+#sed -i "" -E 's/(dup)[^<]*/\1/g' *.xml
+#sed -i "" 's/\(del\)[^<]*/\1/g' *.xml
+(
+  read_xls("./input/bm/TW-MRD-201226-DRAGEN.xls")
+  %>% clean_names()
+  # %>% count(patient)
+  # %>% filter(n > 1)
+  # %>% filter(str_detect(patient, "BIG"))
+  %>% mutate(patient = str_replace_all(patient, "BONTET,JEROME", "BONTET,JÉROME"))
+  %>% mutate(patient = str_replace_all(patient, "MARTIN,CORINNE", "MARTIN_,CORINNE"))
+  # %>% mutate(patient = str_replace_all(patient, "TAYSSE,FRANCOISE", "TAYSSE_,FRANÇOISE"))
+  %>% mutate(patient = str_to_upper(patient))
+  %>% mutate(patient = str_replace_all(patient, " ", "_"))
+  %>% filter(prelevement != "T-NEG-12022026")
+  %>% mutate(n_bm = str_remove(prelevement, "D[0-9]{2}"))
+  %>% left_join(ALL_POSMYE, by = c("patient" = "nom"))
+  %>% filter(str_detect(ndosbm_diag, "L"))
+  # %>% filter()
+  # %>% select(ndosbm_diag)
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> RUN_200226_BIG
+
+(
+  RUN_200226_BIG
+  %>% filter(str_detect(posmye_juillet2025_5, "Analyse négative"))
+) -> NEG
+
+(
+  RUN_200226_BIG
+  %>% filter(!str_detect(posmye_juillet2025_5, "Analyse négative"))
+  # %>% filter()
+  # %>% select(ndosbm_diag)
+  # %>% count(ndosbm_diag)
+  # %>% filter(n > 1 )
+  # %>% write_tsv(., pipe("pbcopy"))
+) -> RUN_200226_BIG
+
+(
+  read_tsv("./input/bm/path_200226.tsv")
+  %>% clean_names()
+  %>% filter(!str_detect(path, "GROUP"))
+  %>% filter(!str_detect(path, "100.xml"))
+  %>% filter(!str_detect(path, "100000.xml"))
+  # %>% filter(!str_detect(path, "Q100"))
+  # %>% filter(!str_detect(path, "GROUP-100000"))
+  # %>% filter(!str_detect(path, "XLSX"))
+  # %>% distinct(id)
+  # %>% nrow()
+  # %>% filter(!str_detect(path, "FILT3R"))
+  # %>% filter(!str_detect(path, "xlsx"))
+  # %>% filter(!str_detect(path, "XLSX"))
+  # %>% group_by(id)
+  # %>% slice_max(date)
+  # %>% distinct(id, date, .keep_all = TRUE)
+  # %>% ungroup()
+  # %>% select(path)
+) -> path
+
+setdiff(RUN_200226_BIG$ndosbm_diag, path$id)
+
+write_tsv(path, "./output/path200226.tsv", col_names = FALSE)
+
+(
+  process_xml_folder_parallel("./input/bm/XML/200226_xml/")
+) -> all_variants_data_300126
+
+(
+  all_variants_data_300126
+  %>% mutate(ndosbm = str_extract(main_sample_name, "L[0-9]{7}"))
+  # %>% filter(prefered_transcript == "YES")
+) -> all_variants_data_300126_clean
+
+```
+
+```{r}
+(
+  RUN_200226_BIG
+  %>% filter(!str_detect(posmye_juillet2025_5,"Analyse"))
+  # %>% mutate(ndosbm_diag = ifelse(ndosbm_diag == "L2211783", "L2211770", ndosbm_diag))
+  %>% separate_rows(posmye_juillet2025_5, sep = "\\\\br\\.|\\r?\\n")
+  %>% mutate(posmye_juillet2025_5 = str_remove(posmye_juillet2025_5, "\\\\"))
+  %>% mutate(gene = str_extract(posmye_juillet2025_5, list_gene_LOVER_2023))
+  %>% mutate(vaf = str_extract(posmye_juillet2025_5, "\\d+(\\.\\d+)?%")) 
+  %>% mutate(vaf = as.numeric(str_remove(vaf, "%")))
+  %>% mutate(c. = str_extract(posmye_juillet2025_5, "c.* :"))
+  %>% mutate(c. = ifelse(is.na(c.), str_extract(posmye_juillet2025_5, "c.* \\("),c.))
+  %>% mutate(c. = str_remove(c., "( :)| \\("))
+  %>% mutate(p. = str_extract(posmye_juillet2025_5, "p\\..*\\("))
+  %>% mutate(p. = str_remove(p., "\\("))
+  %>% mutate(p. = ifelse(is.na(p.), "p.intron", p.))
+  %>% mutate(mutation = paste0(gene, "_", p.))
+  %>% filter(!str_detect(mutation,"NA_p.intron"))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1789_1792delinsAATGGA") ~ "c.1789_1792del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1781_1782insTGGTAGACCGAGTGGCTCCTCAGATAATGAGTACTT") ~ "c.1781_1782insTGGTAGACCGAGTGGCTCCTCAGATAATGAGTACTTCTACGTTGATTT",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1720_1743delinsTATGATCTC") ~ "c.1720_1743del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.919_932del") ~ "c.1720_1743del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1778_1779insAGTGACCGGCTCCTCAGATAATGAGTACTTCTACGT") ~ "c.1778_1779insAGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGA",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1803_1804insCCCTGCTCCTCAGATAATGAGTACTTCTACGTTGAT") ~ "c.1803_1804insCCCTGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGAATATGATCTC",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1770delinsGGATCCT") ~ "c.1770del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1256_1257delinsAAGGGGGTCC") ~ "c.1256_1257insAGGGGG",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.2502_2505delinsGAGA") ~ "c.2502_2505del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "1803_1804insGAAAAGGTGACCGGCTCCTCAGATAATGAGTACTTC") ~ "c.1803_1804insGAAAAGGTGACCGGCTCCTCAGATAATGAGTACTTCTACGTTGATTTCAGAGAATATGAATATGATCTC",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1808_1809insTGTAAATAATGAGTACTTCTACGTTGATTTCAGAGA") ~ "c.1808_1809insTGTAAATAATGAGTACTTCTACGTTGATTTCAGAGAATATGAATATGATCTCAAATG",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1299delinsGGCGCTTTACTCTGAGCTCTCGGCGCTTTCCTTGGGGGCGGAA") ~ "c.1299del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1138delinsGT") ~ "c.1138del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.1109delinsCC") ~ "c.1109del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.497delinsAC") ~ "c.497del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.6497_6498delinsTT") ~ "c.6497_6498del",
+    TRUE ~ c.
+  ))
+  %>% mutate(
+  `c.` = case_when(
+    str_detect(c., "c.497delinsAC") ~ "c.497del",
+    TRUE ~ c.
+  ))
+  %>% left_join(all_variants_data_300126_clean, by=c("ndosbm_diag" = "ndosbm", "c." = "nucleotidic_position"))
+  %>% arrange(echantillon, desc(prefered_transcript))
+  %>% group_by(echantillon, chromosome, position, reference, alternative)
+  %>% slice_head(n = 1)
+  %>% filter(!is.na(main_sample_name) | (is.na(main_sample_name) & str_detect(mutation, "NPM1")))
+  %>% ungroup()
+  %>% group_by(ndosbm_diag)
+  # %>% filter(!all(is.na(main_sample_name)))
+  %>% mutate(lib = NA)
+  %>% mutate(date_suivi = NA)
+  %>% mutate(DDG = NA)
+  %>% select(ndosbm_diag, lib, gene = gene.x, chromosome, position, reference, alternative,
+   transcript, exon, nucleotidic_position = c., proteinic_position, vaf_percent = vaf,
+   ndosbm_suivi = n_bm, date_suivi, nom_patient = patient, DDG)
+  # %>% filter(if_any(everything(), is.na))
+) -> all
+
+(
+  all
+  %>% filter(is.na(chromosome))
+  %>% mutate(grep = paste0("grep \"", str_sub(`c.`, 1, 7), "\" ", ndosbm_diag))
+  %>% select(`c.`, grep)
+  %>% View()
+)
+
+length(unique(all$ndosbm_suivi))
+length(unique(all$ndosbm_diag))
+length(unique(RUN_200226_BIG$ndosbm_diag))
+setdiff(unique(RUN_200226_BIG$ndosbm_diag), all$ndosbm_diag)
+
+writexl::write_xlsx(all, "./output/bm/FC_260226.xlsx")
 
 ```
